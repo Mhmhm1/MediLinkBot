@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Doctor - MediLink</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="text-center py-4">
+            <h1 class="logo">MediLink</h1>
+            <p class="subtitle">Select Your Doctor</p>
+        </header>
+
+        <div class="chat-container">
+            <div class="chat-message bot-message">
+                <div class="message-icon">🤖</div>
+                <div class="message-content">
+                    <p class="mb-0">Please provide your information and select a {{ specialty }} from our recommended specialists:</p>
+                </div>
+            </div>
+
+            {% if error %}
+            <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+                {{ error }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('specialist') }}" class="mt-4">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Personal Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Full Name *</label>
+                            <input type="text" class="form-control" id="name" name="name" required placeholder="Enter your full name">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="age" class="form-label">Age *</label>
+                                <input type="number" class="form-control" id="age" name="age" required min="1" max="120" placeholder="Enter your age">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="location" class="form-label">Location *</label>
+                                <input type="text" class="form-control" id="location" name="location" required placeholder="City, Country">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Select Condition for Follow-up</h5>
+                    </div>
+                    <div class="card-body">
+                        <label class="form-label">Choose the condition you'd like to focus on: *</label>
+                        {% for result in results[:2] %}
+                        <div class="form-check specialist-option mb-2">
+                            <input class="form-check-input" type="radio" name="selected_disease" id="disease-{{ loop.index }}" value="{{ result.disease }}" {% if loop.index == 1 %}checked{% endif %}>
+                            <label class="form-check-label w-100" for="disease-{{ loop.index }}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ result.disease }}</strong>
+                                        <span class="badge bg-primary ms-2">{{ result.confidence }}% match</span>
+                                    </div>
+                                    <small class="text-muted">{{ result.specialist }}</small>
+                                </div>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 id="doctor-card-title" class="mb-0">Choose Your {{ specialty }}</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">Select from our top-rated specialists. Click on a card to select.</p>
+                        <div id="doctors-container"></div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('results') }}" class="btn btn-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-left me-2" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/>
+                        </svg>
+                        Back to Results
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        View Summary
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-right ms-2" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8"/>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+const doctorsBySpecialty = {{ (doctors_by_specialty or {}) | tojson }};
+const RESULTS = {{ results|tojson }};
+const DISEASE_MEDS = {{ (disease_meds or {}) | tojson }};
+const SYMPTOMS_ARR = {{ (session.get('user_symptoms') or []) | tojson }};
+const SYMPTOMS_TXT = (SYMPTOMS_ARR || []).join(', ');
+function renderDoctors(spec){
+    const list = (doctorsBySpecialty[spec] || []).slice(0, 2);
+    const container = document.getElementById('doctors-container');
+    const cardTitle = document.getElementById('doctor-card-title');
+    cardTitle.textContent = `Choose Your ${spec}`;
+    let html = '';
+    list.forEach((doctor, idx)=>{
+        const checked = idx === 0 ? 'checked' : '';
+        const selectedCls = idx === 0 ? 'selected' : '';
+        html += `
+        <div class="doctor-card ${selectedCls}">
+            <input type="radio" name="selected_doctor" value="${doctor.name}" id="doctor-${idx+1}" ${checked} style="display: none;">
+            <div class="doctor-name">${doctor.name}</div>
+            <div class="doctor-qualifications">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-mortarboard-fill me-1" viewBox="0 0 16 16"><path d="M8.211 2.047a.5.5 0 0 0-.422 0l-7.5 3.5a.5.5 0 0 0 .025.917l7.5 3a.5.5 0 0 0 .372 0L14 7.14V13a1 1 0 0 0-1 1v2h3v-2a1 1 0 0 0-1-1V6.739l.686-.275a.5.5 0 0 0 .025-.917z"/><path d="M4.176 9.032a.5.5 0 0 0-.656.327l-.5 1.7a.5.5 0 0 0 .294.605l4.5 1.8a.5.5 0 0 0 .372 0l4.5-1.8a.5.5 0 0 0 .294-.605l-.5-1.7a.5.5 0 0 0-.656-.327L8 10.466z"/></svg>
+                ${doctor.qualifications}
+            </div>
+            <div class="doctor-experience">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-briefcase-fill me-1" viewBox="0 0 16 16"><path d="M6.5 1A1.5 1.5 0 0 0 5 2.5V3H1.5A1.5 1.5 0 0 0 0 4.5v1.384l7.614 2.03a.5.5 0 0 0 .772 0L16 5.884V4.5A1.5 1.5 0 0 0 14.5 3H11v-.5A1.5 1.5 0 0 0 9.5 1zm0 1h3a.5.5 0 0 1 .5.5V3H6v-.5a.5.5 0 0 1 .5-.5"/><path d="M0 12.5A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5V6.85L8.129 8.947a.5.5 0 0 1-.258 0L0 6.85z"/></svg>
+                ${doctor.experience}
+            </div>
+            <div class="doctor-rating">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-star-fill me-1" viewBox="0 0 16 16"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg>
+                ${doctor.rating}/5.0 Rating
+            </div>
+            <div class="d-flex gap-2 mt-2">
+              <button type="button" class="btn btn-outline-success message-btn">💬 Message Doctor</button>
+              <button type="button" class="btn btn-outline-primary book-btn">📅 Book Appointment</button>
+            </div>
+        </div>`;
+    });
+    container.innerHTML = html || '<div class="text-muted">No doctors available for this specialty.</div>';
+    // Make the whole card selectable
+    container.querySelectorAll('.doctor-card').forEach((card, i)=>{
+        card.addEventListener('click', (e)=>{
+            const input = card.querySelector('input[name=selected_doctor]');
+            if (!input) return;
+            input.checked = true;
+            container.querySelectorAll('.doctor-card').forEach(c=>c.classList.remove('selected'));
+            card.classList.add('selected');
+        });
+    });
+}
+document.querySelectorAll('input[name=selected_disease]').forEach(el=>{
+    el.addEventListener('change', ()=>{
+        const selectedDisease = document.querySelector('input[name=selected_disease]:checked').value;
+        const spec = (RESULTS.find(r=>r.disease===selectedDisease)||{}).specialist || '{{ specialty }}';
+        renderDoctors(spec);
+    });
+});
+window.addEventListener('DOMContentLoaded', ()=>{
+    const initialDisease = document.querySelector('input[name=selected_disease]:checked').value;
+    const spec = (RESULTS.find(r=>r.disease===initialDisease)||{}).specialist || '{{ specialty }}';
+    renderDoctors(spec);
+    // Delegate click for message buttons
+    document.getElementById('doctors-container').addEventListener('click', (e)=>{
+        const btn = e.target.closest('.message-btn');
+        if (!btn) return;
+        const doctorInput = document.querySelector('input[name=selected_doctor]:checked');
+        const doctor = doctorInput ? doctorInput.value : '';
+        const patientName = document.getElementById('name').value.trim();
+        const age = document.getElementById('age').value.trim();
+        const location = document.getElementById('location').value.trim();
+        const selectedDisease = document.querySelector('input[name=selected_disease]:checked').value;
+        if (!patientName || !age || !location) { alert('Please fill in your personal information first.'); return; }
+        if (!doctor) { alert('Please select a doctor.'); return; }
+        const meds = DISEASE_MEDS[selectedDisease] || '';
+        const summary = 'Hi, my name is ' + patientName + ", I'm " + age + ' years old from ' + location + '. ' +
+                        'I have the following symptoms: ' + SYMPTOMS_TXT + '. ' +
+                        'MediLink recommended these medications for ' + selectedDisease + ': ' + meds;
+        startChat(doctor, summary);
+    });
+    document.getElementById('doctors-container').addEventListener('click', (e)=>{
+        const btn = e.target.closest('.book-btn');
+        if (!btn) return;
+        const doctorInput = document.querySelector('input[name=selected_doctor]:checked');
+        const doctor = doctorInput ? doctorInput.value : '';
+        const selectedDisease = document.querySelector('input[name=selected_disease]:checked').value;
+        const spec = (RESULTS.find(r=>r.disease===selectedDisease)||{}).specialist || '{{ specialty }}';
+        if (!doctor) { alert('Please select a doctor.'); return; }
+        window.location.href = `/book?doctor=${encodeURIComponent(doctor)}&specialty=${encodeURIComponent(spec)}`;
+    });
+});
+function startChat(doctorName, summary) {
+    window.location.href = `/chat/${encodeURIComponent(doctorName)}?summary=${encodeURIComponent(summary)}`;
+}
+    </script>
+
+</body>
+</html>

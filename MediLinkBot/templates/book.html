@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Appointment – MediLink</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="m-0">Book Appointment</h3>
+      <div>
+        <a class="btn btn-outline-secondary" href="{{ url_for('bookings') }}">My Appointments</a>
+        <a class="btn btn-primary" href="{{ url_for('index') }}">Home</a>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('book') }}" class="card p-3 shadow-sm">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Doctor</label>
+          <input type="text" class="form-control" value="{{ doctor_name }}" readonly>
+          <input type="hidden" name="doctor" value="{{ doctor_name }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Specialty</label>
+          <input type="text" class="form-control" value="{{ doctor_specialty }}" readonly>
+          <input type="hidden" name="specialty" value="{{ doctor_specialty }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Hospital</label>
+          <input type="text" class="form-control" value="{{ hospital }}" readonly>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Phone</label>
+          <input type="text" class="form-control" value="{{ phone }}" readonly>
+        </div>
+      </div>
+
+      <hr class="my-4" />
+
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Mode</label>
+          <select id="mode" name="mode" class="form-select" required>
+            <option value="">Select mode</option>
+            <option value="virtual">Virtual (Mon, Wed, Sat)</option>
+            <option value="physical">Physical (Tue, Thu)</option>
+          </select>
+        </div>
+        <div class="col-md-4" id="allowedDayWrap" style="display:none;">
+          <label class="form-label">Allowed Day</label>
+          <select id="allowed_day" class="form-select">
+            <option value="">Select day</option>
+          </select>
+          <div class="form-text">Picking a day will auto-set the next available date.</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Date</label>
+          <input id="date" name="date" type="date" class="form-control" required>
+          <div class="form-text">Allowed days depend on mode.</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Time Slot</label>
+          <select id="slot" name="slot" class="form-select" required>
+            <option value="">Select time slot</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="virtualFields" class="row g-3 mt-1" style="display:none;">
+        <div class="col-md-4">
+          <label class="form-label">Contact Method</label>
+          <select name="contact_method" id="contact_method" class="form-select">
+            <option value="phone">Phone</option>
+            <option value="email">Email</option>
+          </select>
+        </div>
+        <div class="col-md-8">
+          <label class="form-label">Contact</label>
+          <input type="text" name="contact_value" id="contact_value" class="form-control" placeholder="Your phone or email" value="{{ current_user.email }}">
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <label class="form-label">Reason / Notes (optional)</label>
+        <textarea name="reason" rows="3" class="form-control" placeholder="Briefly describe your reason for booking">{{ brief_summary or '' }}</textarea>
+      </div>
+
+      <div class="mt-3">
+        <button type="submit" class="btn btn-primary">Confirm Booking</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const modeEl = document.getElementById('mode');
+    const dateEl = document.getElementById('date');
+    const slotEl = document.getElementById('slot');
+    const vFields = document.getElementById('virtualFields');
+    const dayWrap = document.getElementById('allowedDayWrap');
+    const dayEl = document.getElementById('allowed_day');
+
+    const slots = {
+      virtual: ['10-12','14-16'],
+      physical: ['8-10','10-12','12-14','14-16','16-18']
+    };
+    const daysByMode = {
+      virtual: [0,2,5], // Mon, Wed, Sat
+      physical: [1,3]   // Tue, Thu
+    };
+
+    const dayNames = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+    function updateSlots(){
+      const mode = modeEl.value;
+      slotEl.innerHTML = '<option value="">Select time slot</option>';
+      (slots[mode] || []).forEach(s=>{
+        const opt = document.createElement('option');
+        opt.value = s; opt.textContent = s.replace('-', ':00 - ') + ':00';
+        slotEl.appendChild(opt);
+      });
+      vFields.style.display = mode === 'virtual' ? '' : 'none';
+      // Allowed day picker
+      const allowed = daysByMode[mode] || [];
+      dayWrap.style.display = allowed.length ? '' : 'none';
+      dayEl.innerHTML = '<option value="">Select day</option>';
+      allowed.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = dayNames[d];
+        dayEl.appendChild(opt);
+      });
+    }
+
+    function setDateConstraints(){
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = String(today.getMonth()+1).padStart(2,'0');
+      const d = String(today.getDate()).padStart(2,'0');
+      dateEl.min = `${y}-${m}-${d}`;
+    }
+
+    function setNextDateForWeekday(weekday){
+      if (weekday === '' || weekday == null) return;
+      const target = parseInt(weekday, 10);
+      if (Number.isNaN(target)) return;
+      const today = new Date();
+      const todayW = (today.getDay()+6)%7; // convert JS Sunday(0) to 6, so Monday=0 ... Sunday=6
+      let offset = (target - todayW);
+      if (offset < 0) offset += 7;
+      if (offset === 0) offset = 7; // pick next week if same day
+      const next = new Date(today);
+      next.setDate(today.getDate() + offset);
+      const y = next.getFullYear();
+      const m = String(next.getMonth()+1).padStart(2,'0');
+      const d = String(next.getDate()).padStart(2,'0');
+      dateEl.value = `${y}-${m}-${d}`;
+    }
+
+    modeEl.addEventListener('change', updateSlots);
+    dayEl.addEventListener('change', (e)=> setNextDateForWeekday(e.target.value));
+    document.addEventListener('DOMContentLoaded', ()=>{
+      setDateConstraints();
+      updateSlots();
+    });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

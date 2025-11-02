@@ -1,0 +1,465 @@
+/* Medical Theme - White and Blue Color Scheme */
+:root {
+    --primary-blue: #0066cc;
+    --light-blue: #e6f2ff;
+    --dark-blue: #004080;
+    --medical-white: #ffffff;
+    --text-dark: #333333;
+    --border-color: #cce5ff;
+    --success-green: #28a745;
+    --warning-orange: #fd7e14;
+    --danger-red: #dc3545;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #e6f2ff 0%, #ffffff 100%);
+    min-height: 100vh;
+    padding: 20px 0;
+    color: var(--text-dark);
+}
+
+.container {
+    max-width: 900px;
+}
+
+/* Header Styles */
+header {
+    background: var(--medical-white);
+    border-radius: 15px;
+    box-shadow: 0 2px 10px rgba(0, 102, 204, 0.1);
+    margin-bottom: 30px;
+}
+
+.logo {
+    color: var(--primary-blue);
+    font-weight: 700;
+    font-size: 2.5rem;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.subtitle {
+    color: var(--dark-blue);
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* Chat Container */
+.chat-container {
+    background: var(--medical-white);
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 4px 20px rgba(0, 102, 204, 0.15);
+}
+
+/* Chat Messages */
+.chat-message {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.message-content {
+    flex: 1;
+    background: var(--light-blue);
+    padding: 15px 20px;
+    border-radius: 10px;
+    border-left: 4px solid var(--primary-blue);
+}
+
+.bot-message .message-content {
+    background: var(--light-blue);
+    border-left-color: var(--primary-blue);
+}
+
+.user-message .message-content {
+    background: #f8f9fa;
+    border-left-color: #6c757d;
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+    padding: 12px 30px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: var(--dark-blue);
+    border-color: var(--dark-blue);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    padding: 12px 30px;
+    font-weight: 600;
+    border-radius: 8px;
+}
+
+.btn-outline-primary {
+    color: var(--primary-blue);
+    border-color: var(--primary-blue);
+    padding: 12px 30px;
+    font-weight: 600;
+    border-radius: 8px;
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+/* Cards */
+.card {
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 102, 204, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-header {
+    background-color: var(--light-blue);
+    border-bottom: 2px solid var(--border-color);
+    font-weight: 600;
+    color: var(--dark-blue);
+    border-radius: 10px 10px 0 0 !important;
+}
+
+/* Disease Cards */
+.disease-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.disease-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 102, 204, 0.2);
+}
+
+.confidence-badge {
+    font-size: 0.9rem;
+    padding: 8px 15px;
+    font-weight: 700;
+}
+
+/* Medication List */
+.medication-list {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 0;
+}
+
+.medication-list li {
+    padding: 5px 0;
+    padding-left: 20px;
+    position: relative;
+}
+
+.medication-list li::before {
+    content: "💊";
+    position: absolute;
+    left: 0;
+}
+
+.specialist-name {
+    font-size: 1.1rem;
+    color: var(--primary-blue);
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+/* Form Styles */
+.form-control, .form-select {
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 15px;
+    transition: border-color 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.15);
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+/* Symptom Scrollable Container */
+.symptom-scrollable-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    background-color: #f8f9fa;
+}
+
+.symptom-scrollable-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.symptom-scrollable-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.symptom-scrollable-container::-webkit-scrollbar-thumb {
+    background: var(--primary-blue);
+    border-radius: 4px;
+}
+
+.symptom-scrollable-container::-webkit-scrollbar-thumb:hover {
+    background: var(--dark-blue);
+}
+
+.symptom-item {
+    transition: background-color 0.2s ease;
+}
+
+.symptom-item:hover {
+    background-color: rgba(0, 102, 204, 0.05);
+    border-radius: 4px;
+}
+
+.specialist-option {
+    padding: 10px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.specialist-option:hover {
+    background-color: var(--light-blue);
+    border-color: var(--primary-blue);
+}
+
+.specialist-option .form-check-input:checked ~ label {
+    color: var(--dark-blue);
+    font-weight: 600;
+}
+
+/* Doctor Cards */
+.doctor-card {
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.doctor-card:hover {
+    border-color: var(--primary-blue);
+    box-shadow: 0 4px 15px rgba(0, 102, 204, 0.15);
+    transform: translateY(-2px);
+}
+
+.doctor-card.selected {
+    border-color: var(--primary-blue);
+    background-color: var(--light-blue);
+}
+
+.doctor-name {
+    color: var(--dark-blue);
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.doctor-qualifications {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+}
+
+.doctor-experience {
+    color: #555;
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+}
+
+.doctor-rating {
+    color: #f39c12;
+    font-weight: 600;
+}
+
+/* Medication Details */
+.medication-details {
+    background-color: #f8f9fa;
+    border-left: 4px solid var(--success-green);
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.medication-name {
+    font-weight: 700;
+    color: var(--dark-blue);
+    margin-bottom: 5px;
+}
+
+.medication-dosage {
+    color: #0066cc;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.medication-side-effects {
+    color: #856404;
+    font-size: 0.85rem;
+}
+
+/* Summary Styles */
+.summary-card {
+    border: 2px solid var(--border-color);
+}
+
+.symptom-summary-list {
+    columns: 2;
+    column-gap: 20px;
+    list-style: none;
+    padding-left: 0;
+}
+
+.symptom-summary-list li {
+    padding: 5px 0;
+    padding-left: 25px;
+    position: relative;
+    break-inside: avoid;
+}
+
+.symptom-summary-list li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--success-green);
+    font-weight: bold;
+}
+
+.medication-summary-list {
+    list-style: none;
+    padding-left: 0;
+}
+
+.medication-summary-list li {
+    padding: 8px 0;
+    padding-left: 30px;
+    position: relative;
+}
+
+.medication-summary-list li::before {
+    content: "💊";
+    position: absolute;
+    left: 0;
+    font-size: 1.2rem;
+}
+
+.chat-history-item {
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+}
+
+.chat-history-item.bot {
+    background-color: var(--light-blue);
+}
+
+.chat-history-item.user {
+    background-color: #f8f9fa;
+}
+
+/* Disclaimer */
+.disclaimer {
+    background-color: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 8px;
+    padding: 15px;
+}
+
+/* Alerts */
+.alert {
+    border-radius: 8px;
+    border-width: 2px;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.alert-primary {
+    background-color: var(--light-blue);
+    border-color: var(--primary-blue);
+    color: var(--dark-blue);
+}
+
+/* Progress Bar */
+.progress {
+    background-color: #e9ecef;
+    border-radius: 5px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .logo {
+        font-size: 2rem;
+    }
+    
+    .chat-container {
+        padding: 20px;
+    }
+    
+    .symptom-summary-list {
+        columns: 1;
+    }
+}
+
+/* Print Styles */
+@media print {
+    body {
+        background: white;
+    }
+    
+    .btn, .alert {
+        display: none;
+    }
+    
+    .card {
+        break-inside: avoid;
+    }
+}

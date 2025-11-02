@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediLink Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Inter', sans-serif; color:#0f172a; display:flex; flex-direction:column; min-height:100vh; background: radial-gradient(1200px 600px at 20% -20%, #e6fff6 0%, rgba(255,255,255,0) 60%), radial-gradient(900px 500px at 120% 10%, #e8f0ff 0%, rgba(255,255,255,0) 60%), linear-gradient(180deg, #f8fafc 0%, #f3f4f6 100%); }
+html[data-theme="dark"] body { color:#e5e7eb; background: radial-gradient(1200px 600px at 20% -20%, #0f172a 0%, rgba(15,23,42,0) 60%), radial-gradient(900px 500px at 120% 10%, #0b1220 0%, rgba(2,6,23,0) 60%), linear-gradient(180deg, #0b1220 0%, #0f172a 100%); }
+
+/* Header */
+.header { background: rgba(255,255,255,0.85); backdrop-filter: saturate(120%) blur(6px); border-bottom:1px solid #e5e7eb; padding:1.25rem 2rem; position:sticky; top:0; z-index:10; }
+html[data-theme="dark"] .header { background: rgba(15,23,42,0.7); border-color:#1f2937; }
+.header-content { max-width:900px; margin:0 auto; display:flex; align-items:center; gap:0.875rem; }
+.header-logo { width:42px; height:42px; background: linear-gradient(135deg,#10b981 0%,#22c55e 100%); border-radius:10px; display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:1.1rem; box-shadow: 0 6px 18px rgba(16,185,129,0.25); }
+.header-text h1 { font-size:1.25rem; font-weight:700; color:#0b1324; letter-spacing:0.2px; }
+.header-text p { font-size:0.85rem; color:#64748b; margin-top:0.15rem; }
+.header-actions { margin-left:auto; }
+.theme-toggle { background:transparent; border:1px solid #e2e8f0; color:#0f172a; padding:0.45rem 0.7rem; border-radius:8px; cursor:pointer; font-weight:600; font-size:0.85rem; }
+.theme-toggle:hover { background:#f1f5f9; }
+html[data-theme="dark"] .theme-toggle { color:#e2e8f0; border-color:#334155; }
+html[data-theme="dark"] .theme-toggle:hover { background:#111827; }
+
+/* Main Container */
+.container { flex:1; display:flex; align-items:center; justify-content:center; padding:2rem 1rem; }
+.chat-container { width:100%; max-width:720px; height:calc(100vh - 190px); background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.85)); border-radius:16px; border:1px solid rgba(226,232,240,0.8); box-shadow: 0 10px 30px rgba(15,23,42,0.07), 0 2px 8px rgba(15,23,42,0.06); display:flex; flex-direction:column; overflow:hidden; }
+html[data-theme="dark"] .chat-container { background: linear-gradient(180deg, rgba(17,24,39,0.9), rgba(15,23,42,0.9)); border-color:#1f2937; box-shadow: 0 10px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3); }
+
+.doctor-strip { display:flex; align-items:center; gap:0.75rem; padding:0.8rem 1rem; border-bottom:1px solid #e5e7eb; background:linear-gradient(180deg,#f8fafc, #ffffff); }
+html[data-theme="dark"] .doctor-strip { background:linear-gradient(180deg,#0b1220,#0f172a); border-color:#1f2937; }
+.doc-avatar { width:36px; height:36px; border-radius:50%; background:#10b981; color:white; display:flex; align-items:center; justify-content:center; font-weight:700; }
+.doc-info { display:flex; flex-direction:column; }
+.doc-info .name { font-weight:700; font-size:0.95rem; }
+.doc-info .meta { font-size:0.8rem; color:#64748b; }
+html[data-theme="dark"] .doc-info .meta { color:#94a3b8; }
+
+/* Chat Messages */
+.chat-box { flex:1; overflow-y:auto; padding:1rem 1.25rem; display:flex; flex-direction:column; gap:0.9rem; scroll-behavior:smooth; }
+.chat-box::-webkit-scrollbar { width:8px; }
+.chat-box::-webkit-scrollbar-track { background:transparent; }
+.chat-box::-webkit-scrollbar-thumb { background:linear-gradient(180deg,#d1d5db,#c7d2fe); border-radius:999px; }
+.chat-box::-webkit-scrollbar-thumb:hover { background:linear-gradient(180deg,#9ca3af,#93c5fd); }
+
+.chat-row { display:flex; gap:0.6rem; align-items:flex-end; }
+.chat-row.user { justify-content:flex-end; }
+.chat-row.bot { justify-content:flex-start; }
+.avatar { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:700; flex-shrink:0; box-shadow: 0 2px 6px rgba(2,6,23,0.08); }
+.avatar.user { background:linear-gradient(135deg,#0ea5e9,#38bdf8); color:white; }
+.avatar.bot { background:#10b981; color:white; }
+.bubble { max-width:78%; padding:0.85rem 1rem; border-radius:14px; font-size:0.96rem; line-height:1.6; animation:messageSlide 0.28s ease-out; box-shadow: 0 1px 0 rgba(2,6,23,0.04), 0 1px 2px rgba(2,6,23,0.06); }
+.bubble.user { background:linear-gradient(135deg,#10b981 0%,#34d399 100%); color:white; border-radius:14px 6px 14px 14px; box-shadow: 0 6px 16px rgba(16,185,129,0.24); }
+.bubble.bot { background:#f8fafc; color:#111827; border:1px solid #e5e7eb; border-radius:6px 14px 14px 14px; }
+html[data-theme="dark"] .bubble.bot { background:#0b1220; color:#e5e7eb; border-color:#1f2937; }
+.bubble .from { font-weight:700; color:#0ea5e9; display:block; margin-bottom:0.25rem; font-size:0.88rem; letter-spacing:0.2px; }
+.meta-time { display:block; margin-top:0.35rem; font-size:0.75rem; color:#94a3b8; }
+html[data-theme="dark"] .meta-time { color:#64748b; }
+@keyframes messageSlide { from {opacity:0; transform:translateY(8px) scale(0.98);} to {opacity:1; transform:translateY(0) scale(1);} }
+.chat-message.user { align-self:flex-end; background:linear-gradient(135deg,#10b981 0%,#34d399 100%); color:white; border-radius:14px 6px 14px 14px; box-shadow: 0 6px 16px rgba(16,185,129,0.24); }
+.chat-message.user strong { display:none; }
+.chat-message.bot { align-self:flex-start; background:#f8fafc; color:#111827; border:1px solid #e5e7eb; border-radius:6px 14px 14px 14px; }
+.chat-message.bot strong { font-weight:700; color:#0ea5e9; display:block; margin-bottom:0.25rem; font-size:0.88rem; letter-spacing:0.2px; }
+
+/* Input Area */
+.chat-input { display:flex; gap:0.75rem; padding:1rem; border-top:1px solid #e5e7eb; background:linear-gradient(180deg, rgba(248,250,252,0.9), rgba(250,251,252,0.95)); }
+html[data-theme="dark"] .chat-input { background:linear-gradient(180deg, rgba(15,23,42,0.9), rgba(11,18,32,0.95)); border-color:#1f2937; }
+.chat-input textarea { flex:1; border:1px solid #e5e7eb; border-radius:12px; padding:0.8rem 1rem; font-family:'Inter', sans-serif; font-size:0.96rem; resize:none; background:white; color:#0f172a; max-height:120px; transition: border-color 0.2s ease, box-shadow 0.2s ease; box-shadow: 0 1px 2px rgba(2,6,23,0.04) inset; }
+html[data-theme="dark"] .chat-input textarea { background:#0b1220; color:#e5e7eb; border-color:#1f2937; }
+.chat-input textarea:focus { outline:none; border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.15), 0 1px 2px rgba(2,6,23,0.06) inset; }
+.chat-input textarea::placeholder { color:#94a3b8; }
+.chat-input button { display:inline-flex; align-items:center; gap:0.5rem; padding:0.8rem 1.15rem; background:linear-gradient(135deg,#16a34a 0%,#22c55e 60%,#34d399 100%); color:white; border:none; border-radius:12px; font-weight:600; font-size:0.95rem; cursor:pointer; box-shadow: 0 8px 18px rgba(34,197,94,0.25), 0 2px 6px rgba(2,6,23,0.08); transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease; }
+.chat-input button:hover { transform:translateY(-1px); box-shadow: 0 10px 22px rgba(34,197,94,0.28), 0 3px 8px rgba(2,6,23,0.1); }
+.chat-input button:active { transform:translateY(0); }
+.chat-input button:disabled { opacity:0.65; cursor:not-allowed; }
+.send-spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,0.5); border-top-color:white; border-radius:50%; animation:spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg);} }
+
+/* Footer */
+footer { background:white; border-top:1px solid #e5e7eb; text-align:center; padding:1rem; font-size:0.85rem; color:#94a3b8; }
+html[data-theme="dark"] footer { background:#0b1220; border-color:#1f2937; color:#64748b; }
+
+@media (max-width:640px) {
+    .header { padding:1rem 1rem; }
+    .header-text h1 { font-size:1.1rem; }
+    .container { padding:1rem; }
+    .chat-container { height:calc(100vh - 150px); border-radius:14px; }
+    .chat-box { padding:1.1rem; gap:0.7rem; }
+    .chat-message { max-width:92%; padding:0.7rem 0.9rem; font-size:0.9rem; }
+    .chat-input { padding:0.85rem; gap:0.5rem; }
+    .chat-input button { padding:0.7rem 1rem; font-size:0.9rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-content">
+        <div class="header-logo">ML</div>
+        <div class="header-text">
+            <h1>MediLink</h1>
+            <p>Secure patient-doctor communication</p>
+        </div>
+        <div class="header-actions" style="display:flex; gap:.5rem; align-items:center;">
+            {% if doctor_profile or doctor_name %}
+            <a class="theme-toggle" href="{{ url_for('book') }}?doctor={{ (doctor_profile.name if doctor_profile else doctor_name) | urlencode }}&specialty={{ (doctor_profile.specialty if doctor_profile else '') | urlencode }}">Book</a>
+            {% endif %}
+            <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle dark mode">Dark</button>
+        </div>
+    </div>
+</div>
+{% if doctor_profile %}
+<div class="doctor-profile-card" style="display:flex; gap:1rem; padding:1rem; margin-bottom:1rem; border-radius:12px; background:white; box-shadow:0 2px 6px rgba(0,0,0,0.1); align-items:center;">
+
+    <!-- Avatar -->
+    <div class="doctor-avatar" style="width:80px; height:80px; border-radius:50%; background:#10b981; color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1.5rem;">
+        {% set name_parts = doctor_profile.name.split(' ') %}
+        {{ name_parts[1][0] if name_parts|length > 1 else '' }}{{ name_parts[-1][0] if name_parts|length > 1 else '' }}
+    </div>
+    
+    <!-- Doctor Info -->
+    <div class="doctor-info">
+        <h3 style="margin:0; color:#059669;">{{ doctor_profile.name or 'Unknown Name' }}</h3>
+        <p style="margin:0.2rem 0;"><strong>Specialty:</strong> {{ doctor_profile.specialty or 'Unknown' }}</p>
+        <p style="margin:0.2rem 0;"><strong>Qualifications:</strong> {{ doctor_profile.qualifications or 'Unknown' }}</p>
+        <p style="margin:0.2rem 0;"><strong>Experience:</strong> {{ doctor_profile.experience or 'Unknown' }}</p>
+        <p style="margin:0.2rem 0;"><strong>Rating:</strong> {{ doctor_profile.rating or 'N/A' }}/5</p>
+        
+    </div>
+
+</div>
+{% endif %}
+
+<div class="container">
+    <div class="chat-container">
+        <div class="doctor-strip">
+            {% set np = (doctor_profile.name.split(' ') if doctor_profile else []) %}
+            <div class="doc-avatar">{{ (np[0][0] ~ (np[1][0] if np|length>1 else '')) if doctor_profile else 'DR' }}</div>
+            <div class="doc-info">
+                <div class="name">{{ doctor_profile.name if doctor_profile else doctor_name or 'Doctor' }}</div>
+                <div class="meta">
+                    {% if doctor_profile %}
+                        {% if doctor_profile.hospital and doctor_profile.hospital|lower != 'unknown' %}
+                            {{ doctor_profile.specialty }} • {{ doctor_profile.hospital }}
+                        {% else %}
+                            {{ doctor_profile.specialty }}
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div id="chat-box" class="chat-box"></div>
+        <form id="chat-form" method="POST" class="chat-input">
+            <textarea name="message" id="message" rows="1" placeholder="Type your message..."></textarea>
+            <button id="send-btn" type="submit" aria-label="Send message">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                Send
+            </button>
+        </form>
+    </div>
+</div>
+
+<footer>
+    <p>&copy; 2025 MediLink | Secure & Confidential Healthcare Communication</p>
+</footer>
+
+<script>
+const chatBox = document.getElementById('chat-box');
+const messageInput = document.getElementById('message');
+const chatForm = document.getElementById('chat-form');
+const sendBtn = document.getElementById('send-btn');
+const themeToggle = document.getElementById('theme-toggle');
+
+// Auto-resize text area
+messageInput.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+});
+
+// Handle Enter key
+messageInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+// Handle form submit (button click)
+chatForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    sendMessage();
+});
+
+// Theme handling
+(function initTheme(){
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
+    updateThemeButton();
+})();
+themeToggle.addEventListener('click', ()=>{
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+    localStorage.setItem('theme', isDark ? 'light' : 'dark');
+    updateThemeButton();
+});
+function updateThemeButton(){
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    themeToggle.textContent = isDark ? 'Light' : 'Dark';
+}
+
+// Name utilities
+function getInitials(name){
+    if (!name || typeof name !== 'string') return 'DR';
+    const parts = name.trim().split(/\s+/);
+    const first = parts[0] ? parts[0][0] : '';
+    const second = parts[1] ? parts[1][0] : '';
+    const initials = (first + second).toUpperCase();
+    return initials || 'DR';
+}
+
+// Utility: create message DOM
+function makeMessageRow(kind, content, fromLabel, timestamp, avatarText){
+    const row = document.createElement('div');
+    row.className = `chat-row ${kind}`;
+    const avatar = document.createElement('div');
+    avatar.className = `avatar ${kind}`;
+    avatar.textContent = avatarText;
+    const bubble = document.createElement('div');
+    bubble.className = `bubble ${kind}`;
+    if (kind === 'bot' && fromLabel){
+        const from = document.createElement('strong');
+        from.className = 'from';
+        from.textContent = fromLabel;
+        bubble.appendChild(from);
+    }
+    const text = document.createElement('div');
+    text.textContent = content;
+    bubble.appendChild(text);
+    const time = document.createElement('span');
+    time.className = 'meta-time';
+    time.textContent = timestamp;
+    bubble.appendChild(time);
+    if (kind === 'user') { row.appendChild(bubble); row.appendChild(avatar); }
+    else { row.appendChild(avatar); row.appendChild(bubble); }
+    return row;
+}
+
+// Typing indicator
+function showTyping(fromLabel, avatarText){
+    const row = document.createElement('div');
+    row.className = 'chat-row bot';
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar bot';
+    avatar.textContent = avatarText;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble bot';
+    const from = document.createElement('strong');
+    from.className = 'from';
+    from.textContent = fromLabel;
+    const dots = document.createElement('div');
+    dots.innerHTML = '<span class="dot">●</span> <span class="dot">●</span> <span class="dot">●</span>';
+    bubble.appendChild(from);
+    bubble.appendChild(dots);
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    bubble.style.opacity = '0.8';
+    dots.querySelectorAll('.dot').forEach((d,i)=>{ d.style.opacity = '0.3'; d.style.animation = `blink 1s infinite ${i*0.2}s`; });
+    chatBox.appendChild(row);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    return row;
+}
+const styleBlink = document.createElement('style');
+styleBlink.textContent = '@keyframes blink { 0%,100%{opacity:0.2} 50%{opacity:1} }';
+document.head.appendChild(styleBlink);
+
+function sendMessage() {
+    const msg = messageInput.value.trim();
+    if (!msg) return;
+
+    // Display user's message
+    const now = new Date();
+    const ts = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const userRow = makeMessageRow('user', msg, null, ts, 'You');
+    chatBox.appendChild(userRow);
+
+    messageInput.value = '';
+    messageInput.style.height = 'auto';
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    let doctorName = "{{ doctor_profile.name if doctor_profile else (doctor_name if doctor_name is defined else '') }}";
+    if (!doctorName) doctorName = 'Doctor';
+
+    // sending state
+    const prevHTML = sendBtn.innerHTML;
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<span class="send-spinner" aria-hidden="true"></span>';
+
+    // typing indicator
+    const docInitials = getInitials(doctorName);
+    const typingRow = showTyping(doctorName, docInitials);
+
+    // Send to Flask backend (POST /chat/<doctor_name>)
+    fetch(`/chat/${encodeURIComponent(doctorName)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg })
+    })
+    .then(res => res.json())
+    .then(data => {
+        typingRow.remove();
+        const reply = data.reply || '...';
+        const now2 = new Date();
+        const ts2 = now2.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        const botRow = makeMessageRow('bot', reply, doctorName, ts2, docInitials);
+        chatBox.appendChild(botRow);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    })
+    .catch(err => {
+        console.error(err);
+        typingRow.remove();
+        const now3 = new Date();
+        const ts3 = now3.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        const errRow = makeMessageRow('bot', 'Sorry, something went wrong.', doctorName, ts3, docInitials);
+        chatBox.appendChild(errRow);
+    })
+    .finally(()=>{
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = prevHTML;
+    });
+}
+
+// Render existing history from server on load
+(function renderHistory(){
+    const history = {{ (chat_messages or []) | tojson }};
+    let doctorName = "{{ doctor_profile.name if doctor_profile else (doctor_name if doctor_name is defined else '') }}";
+    if (!doctorName) doctorName = 'Doctor';
+    const docInitials = getInitials(doctorName);
+    history.forEach(m => {
+        const kind = m.type === 'user' ? 'user' : 'bot';
+        const label = kind === 'bot' ? doctorName : null;
+        const avatarText = kind === 'bot' ? docInitials : 'You';
+        const now = new Date();
+        const ts = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        const row = makeMessageRow(kind, m.message, label, ts, avatarText);
+        chatBox.appendChild(row);
+    });
+    chatBox.scrollTop = chatBox.scrollHeight;
+})();
+</script>
+
+
+</body>
+</html>

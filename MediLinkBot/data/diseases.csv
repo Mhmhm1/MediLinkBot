@@ -1,0 +1,21 @@
+disease,symptoms,medications,specialist
+Malaria,fever;chills;headache;sweating;nausea;vomiting;muscle pain,Artemether-Lumefantrine;Chloroquine;Quinine;Doxycycline,General Practitioner
+Typhoid,high fever;weakness;stomach pain;headache;loss of appetite;constipation,Ciprofloxacin;Azithromycin;Ceftriaxone,General Practitioner
+Common Cold,runny nose;sneezing;cough;sore throat;mild headache;congestion,Paracetamol;Ibuprofen;Antihistamines;Decongestants,General Practitioner
+Influenza,high fever;body aches;fatigue;dry cough;sore throat;headache;chills,Oseltamivir;Zanamivir;Paracetamol;Ibuprofen,General Practitioner
+Pneumonia,cough;fever;chest pain;difficulty breathing;fatigue;chills;sweating,Amoxicillin;Azithromycin;Levofloxacin;Ceftriaxone,Pulmonologist
+Bronchitis,cough;mucus production;fatigue;chest discomfort;mild fever;shortness of breath,Albuterol;Guaifenesin;Antibiotics;Cough suppressants,Pulmonologist
+Asthma,wheezing;shortness of breath;chest tightness;cough;difficulty breathing,Albuterol;Fluticasone;Montelukast;Budesonide,Pulmonologist
+Diabetes Type 2,increased thirst;frequent urination;fatigue;blurred vision;slow healing wounds;numbness,Metformin;Insulin;Glipizide;Sitagliptin,Endocrinologist
+Hypertension,headache;dizziness;chest pain;shortness of breath;nosebleeds;blurred vision,Amlodipine;Lisinopril;Losartan;Hydrochlorothiazide,Cardiologist
+Migraine,severe headache;nausea;vomiting;sensitivity to light;visual disturbances;dizziness,Sumatriptan;Ibuprofen;Paracetamol;Naproxen,Neurologist
+Gastritis,stomach pain;nausea;vomiting;bloating;loss of appetite;indigestion,Omeprazole;Ranitidine;Antacids;Sucralfate,Gastroenterologist
+Urinary Tract Infection,burning urination;frequent urination;cloudy urine;pelvic pain;fever;strong urine odor,Ciprofloxacin;Trimethoprim;Nitrofurantoin;Amoxicillin,Urologist
+Skin Allergy,rash;itching;redness;swelling;hives;dry skin,Antihistamines;Hydrocortisone cream;Cetirizine;Loratadine,Dermatologist
+Eczema,dry skin;itching;redness;rash;skin inflammation;scaling,Hydrocortisone cream;Moisturizers;Tacrolimus;Antihistamines,Dermatologist
+Conjunctivitis,red eyes;itching;discharge;tearing;burning sensation;swollen eyelids,Antibiotic eye drops;Antihistamine drops;Artificial tears,Ophthalmologist
+Sinusitis,facial pain;nasal congestion;headache;thick nasal discharge;fever;loss of smell,Amoxicillin;Decongestants;Nasal sprays;Ibuprofen,ENT Specialist
+Arthritis,joint pain;stiffness;swelling;reduced range of motion;fatigue;weakness,Ibuprofen;Naproxen;Methotrexate;Prednisone,Rheumatologist
+Anxiety,excessive worry;restlessness;fatigue;difficulty concentrating;irritability;muscle tension,Sertraline;Alprazolam;Buspirone;Escitalopram,Psychiatrist
+Depression,sadness;loss of interest;fatigue;sleep changes;appetite changes;difficulty concentrating,Fluoxetine;Sertraline;Escitalopram;Bupropion,Psychiatrist
+Anemia,fatigue;weakness;pale skin;dizziness;shortness of breath;cold hands,Iron supplements;Vitamin B12;Folic acid;Erythropoietin,Hematologist

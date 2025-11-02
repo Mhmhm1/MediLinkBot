@@ -1,0 +1,60 @@
+medication,dosage,side_effects
+Artemether-Lumefantrine,80mg/480mg twice daily for 3 days,Headache;Dizziness;Nausea;Loss of appetite
+Chloroquine,500mg once weekly for prevention,Nausea;Headache;Blurred vision;Stomach upset
+Quinine,600mg three times daily for 7 days,Ringing in ears;Headache;Nausea;Blurred vision
+Doxycycline,100mg twice daily,Nausea;Sun sensitivity;Stomach upset
+Ciprofloxacin,500mg twice daily for 7-14 days,Nausea;Diarrhea;Dizziness;Headache
+Azithromycin,500mg once daily for 3 days,Nausea;Diarrhea;Stomach pain
+Ceftriaxone,2g IV once daily,Injection site pain;Diarrhea;Rash
+Paracetamol,500-1000mg every 4-6 hours (max 4g/day),Rare: liver damage with overdose
+Ibuprofen,400mg every 4-6 hours with food,Stomach upset;Nausea;Heartburn
+Antihistamines,10mg once daily,Drowsiness;Dry mouth;Dizziness
+Decongestants,10mg every 12 hours,Insomnia;Nervousness;Increased heart rate
+Oseltamivir,75mg twice daily for 5 days,Nausea;Vomiting;Headache
+Zanamivir,10mg twice daily for 5 days,Bronchospasm;Cough;Throat irritation
+Amoxicillin,500mg three times daily for 7-10 days,Diarrhea;Nausea;Rash
+Levofloxacin,500mg once daily for 7-14 days,Nausea;Diarrhea;Headache;Dizziness
+Albuterol,2 puffs every 4-6 hours as needed,Tremor;Nervousness;Rapid heartbeat
+Guaifenesin,200-400mg every 4 hours,Nausea;Vomiting;Dizziness
+Antibiotics,As prescribed by doctor,Varies by antibiotic
+Cough suppressants,10-20mg every 4 hours,Drowsiness;Dizziness;Nausea
+Fluticasone,2 puffs twice daily,Throat irritation;Hoarseness;Oral thrush
+Montelukast,10mg once daily at bedtime,Headache;Stomach pain;Dizziness
+Budesonide,1-2 puffs twice daily,Throat irritation;Cough;Hoarseness
+Metformin,500-1000mg twice daily with meals,Nausea;Diarrhea;Stomach upset;Metallic taste
+Insulin,Dose varies by blood sugar,Low blood sugar;Weight gain;Injection site reactions
+Glipizide,5mg once daily before breakfast,Low blood sugar;Nausea;Diarrhea
+Sitagliptin,100mg once daily,Upper respiratory infection;Headache;Sore throat
+Amlodipine,5-10mg once daily,Swelling of ankles;Flushing;Headache
+Lisinopril,10-20mg once daily,Dry cough;Dizziness;Headache
+Losartan,50-100mg once daily,Dizziness;Stuffy nose;Back pain
+Hydrochlorothiazide,12.5-25mg once daily,Increased urination;Dizziness;Low potassium
+Sumatriptan,50-100mg at onset of migraine,Tingling;Dizziness;Drowsiness;Chest tightness
+Naproxen,250-500mg twice daily with food,Stomach upset;Heartburn;Dizziness
+Omeprazole,20mg once daily before meals,Headache;Stomach pain;Nausea;Diarrhea
+Ranitidine,150mg twice daily,Headache;Constipation;Diarrhea
+Antacids,As needed for symptoms,Constipation or diarrhea;Chalky taste
+Sucralfate,1g four times daily,Constipation;Dry mouth;Nausea
+Trimethoprim,100mg twice daily for 3-7 days,Nausea;Vomiting;Rash
+Nitrofurantoin,100mg twice daily for 7 days,Nausea;Headache;Dark urine
+Hydrocortisone cream,Apply thin layer 2-3 times daily,Skin thinning with prolonged use;Burning;Itching
+Cetirizine,10mg once daily,Drowsiness;Dry mouth;Fatigue
+Loratadine,10mg once daily,Headache;Dry mouth;Fatigue
+Moisturizers,Apply 2-3 times daily,Rare: mild stinging
+Tacrolimus,Apply thin layer twice daily,Burning;Itching;Redness at application site
+Antibiotic eye drops,1-2 drops every 2-4 hours,Temporary stinging;Blurred vision
+Antihistamine drops,1-2 drops twice daily,Mild burning;Headache
+Artificial tears,1-2 drops as needed,Temporary blurred vision
+Nasal sprays,2 sprays each nostril twice daily,Nasal irritation;Nosebleeds;Headache
+Methotrexate,7.5-15mg once weekly,Nausea;Fatigue;Mouth sores;Hair thinning
+Prednisone,5-60mg daily (dose varies),Weight gain;Increased appetite;Insomnia;Mood changes
+Sertraline,50-200mg once daily,Nausea;Insomnia;Drowsiness;Sexual dysfunction
+Alprazolam,0.25-0.5mg 2-3 times daily,Drowsiness;Dizziness;Memory problems
+Buspirone,15-30mg daily in divided doses,Dizziness;Nausea;Headache;Nervousness
+Escitalopram,10-20mg once daily,Nausea;Insomnia;Drowsiness;Sexual dysfunction
+Fluoxetine,20-40mg once daily,Nausea;Insomnia;Drowsiness;Sexual dysfunction
+Bupropion,150-300mg daily,Dry mouth;Insomnia;Headache;Nausea
+Iron supplements,325mg once or twice daily,Constipation;Dark stools;Stomach upset
+Vitamin B12,1000mcg daily,Rare: mild diarrhea
+Folic acid,1mg daily,Rare: stomach upset
+Erythropoietin,Injection as prescribed,Injection site pain;High blood pressure;Headache

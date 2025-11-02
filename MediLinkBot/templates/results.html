@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Results - MediLink</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="text-center py-4">
+            <h1 class="logo">MediLink</h1>
+            <p class="subtitle">Diagnosis Results</p>
+        </header>
+
+        <div class="chat-container">
+            <div class="chat-message bot-message">
+                <div class="message-icon">🤖</div>
+                <div class="message-content">
+                    <p class="mb-0">Based on your symptoms, here are the possible conditions I found, ranked by confidence:</p>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                {% for result in results[:2] %}
+                <div class="card disease-card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="card-title mb-0">{{ result.disease }}</h5>
+                            <span class="badge confidence-badge" style="background-color: {% if result.confidence >= 70 %}#dc3545{% elif result.confidence >= 50 %}#fd7e14{% else %}#ffc107{% endif %}">
+                                {{ result.confidence }}% Match
+                            </span>
+                        </div>
+
+                        <div class="progress mb-3" style="height: 8px;">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: {{ result.confidence }}%; background-color: {% if result.confidence >= 70 %}#dc3545{% elif result.confidence >= 50 %}#fd7e14{% else %}#ffc107{% endif %}" 
+                                 aria-valuenow="{{ result.confidence }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <h6 class="text-muted mb-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-capsule me-1" viewBox="0 0 16 16">
+                                    <path d="M1.828 8.9 8.9 1.827a4 4 0 1 1 5.657 5.657l-7.07 7.071A4 4 0 1 1 1.827 8.9Zm9.128.771 2.893-2.893a3 3 0 1 0-4.243-4.242L6.713 5.429z"/>
+                                </svg>
+                                Recommended Medications with Dosage:
+                            </h6>
+                            {% for med in result.medications %}
+                            <div class="medication-details">
+                                <div class="medication-name">💊 {{ med.name }}</div>
+                                <div class="medication-dosage"><strong>Dosage:</strong> {{ med.dosage }}</div>
+                                <div class="medication-side-effects">
+                                    <strong>Common Side Effects:</strong> 
+                                    {% if med.side_effects %}
+                                        {{ med.side_effects|join(', ') }}
+                                    {% else %}
+                                        Consult doctor
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <h6 class="text-muted mb-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-badge me-1" viewBox="0 0 16 16">
+                                        <path d="M6.5 2a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1zM11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
+                                        <path d="M4.5 0A2.5 2.5 0 0 0 2 2.5V14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2.5A2.5 2.5 0 0 0 11.5 0zM3 2.5A1.5 1.5 0 0 1 4.5 1h7A1.5 1.5 0 0 1 13 2.5v10.795a4.2 4.2 0 0 0-.776-.492C11.392 12.387 10.063 12 8 12s-3.392.387-4.224.803a4.2 4.2 0 0 0-.776.492z"/>
+                                    </svg>
+                                    Recommended Specialist:
+                                </h6>
+                                <p class="specialist-name">{{ result.specialist }}</p>
+                            </div>
+                        </div>
+
+                        <small class="text-muted">
+                            Matched {{ result.matched_symptoms }} out of {{ result.total_symptoms }} common symptoms
+                        </small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="alert alert-info mt-4">
+                <strong>Important:</strong> These results are based on symptom matching and should not replace professional medical advice. Please consult a healthcare provider for accurate diagnosis.
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{{ url_for('symptoms') }}" class="btn btn-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-left me-2" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/>
+                    </svg>
+                    Try Again
+                </a>
+                <a href="{{ url_for('specialist') }}" class="btn btn-primary">
+                    Continue to Specialist Selection
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-right ms-2" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
