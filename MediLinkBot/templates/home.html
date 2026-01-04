@@ -14,8 +14,11 @@
     }
     body {
       min-height: 100vh;
-      background: linear-gradient(120deg, #0b1635, #0f2a6b, #143b8e, #0c5cb6);
-      background-size: 300% 300%;
+      background:
+        linear-gradient(120deg, #0b1635, #0f2a6b, #143b8e, #0c5cb6),
+        url("{{ url_for('static', filename='media/background.webp') }}") center/cover no-repeat fixed;
+      background-blend-mode: overlay;
+      background-size: 300% 300%, cover;
       animation: bgShift 18s ease infinite;
       color: var(--text-on-dark);
     }
@@ -39,24 +42,60 @@
 <body>
   <div class="container py-4">
     <header class="nav-wrap d-flex justify-content-between align-items-center px-3 py-2 mb-4">
-      <h2 class="m-0">MediLink</h2>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-outline-light btn-sm me-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#publicFeaturesDrawer" aria-controls="publicFeaturesDrawer">
+          ☰
+        </button>
+        <div class="d-flex align-items-center gap-2">
+          <img src="{{ url_for('static', filename='media/logo.jpg') }}" alt="MediLink logo" height="32" class="rounded">
+          <h2 class="m-0">MediLink</h2>
+        </div>
+      </div>
       <div class="d-flex align-items-center gap-2">
         {% if current_user.is_authenticated %}
           <span class="small-muted d-none d-md-inline">Signed in as {{ current_user.email }}</span>
-          <a href="{{ url_for('profile') }}" class="btn btn-outline-light btn-sm">Profile</a>
-          <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
+          <a href="{{ url_for('profile') }}" class="btn btn-outline-light btn-sm d-none d-md-inline">Profile</a>
+          <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm d-none d-md-inline">Logout</a>
         {% else %}
-          <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm me-2">Login</a>
-          <a href="{{ url_for('signup') }}" class="btn btn-primary btn-sm">Sign up</a>
+          <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm d-none d-md-inline me-1">Login</a>
+          <a href="{{ url_for('signup') }}" class="btn btn-primary btn-sm d-none d-md-inline">Sign up</a>
         {% endif %}
       </div>
     </header>
+
+    <!-- Offcanvas drawer for public features (no login required) -->
+    <div class="offcanvas offcanvas-start text-bg-dark" tabindex="-1" id="publicFeaturesDrawer" aria-labelledby="publicFeaturesDrawerLabel">
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="publicFeaturesDrawerLabel">MediLink Navigation</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body">
+        <p class="small-muted mb-2">Quick tools available without logging in:</p>
+        <div class="list-group mb-3">
+          <a href="{{ url_for('index') }}" class="list-group-item list-group-item-action bg-transparent text-light">🏠 Home</a>
+          <a href="{{ url_for('alerts_page') }}" class="list-group-item list-group-item-action bg-transparent text-light">⚠️ Health Alerts</a>
+          <a href="{{ url_for('facilities_page') }}" class="list-group-item list-group-item-action bg-transparent text-light">📍 Nearby Facilities</a>
+          <a href="{{ url_for('symptoms') }}" class="list-group-item list-group-item-action bg-transparent text-light">🩺 Symptom Checker</a>
+        </div>
+
+        <hr class="border-secondary">
+        <p class="small-muted mb-2">Account</p>
+        {% if current_user.is_authenticated %}
+          <p class="small-muted mb-2">Signed in as {{ current_user.email }}</p>
+          <a href="{{ url_for('profile') }}" class="btn btn-outline-light w-100 mb-2">Profile</a>
+          <a href="{{ url_for('logout') }}" class="btn btn-light w-100">Logout</a>
+        {% else %}
+          <a href="{{ url_for('login') }}" class="btn btn-light w-100 mb-2">Login</a>
+          <a href="{{ url_for('signup') }}" class="btn btn-outline-light w-100">Create account</a>
+        {% endif %}
+      </div>
+    </div>
 
     <section class="hero p-4 p-md-5 mb-4">
       <div class="row align-items-center">
         <div class="col-md-7">
           <h1 class="fw-bold mb-3">Your secure assistant for symptom guidance and doctor conversations</h1>
-          <p class="lead mb-4">Use MediLink to explore likely conditions, review safe medication options with a doctor, and continue your chat anytime.</p>
+          <p class="lead mb-4">Use MediLink to explore likely conditions, review safe medication options with a doctor and continue your chat anytime.</p>
           <a href="{{ url_for('symptoms') }}" class="btn btn-light btn-lg fw-semibold">Start Diagnostics</a>
         </div>
         <div class="col-md-5 text-md-end mt-4 mt-md-0">

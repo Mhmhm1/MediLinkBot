@@ -1,0 +1,58 @@
+{
+  "KE": [
+    {
+      "disease": "Cholera",
+      "level": "high",
+      "updated_at": "2025-12-20",
+      "source": "Ministry of Health, Kenya",
+      "description": "Cholera cases have been reported in several counties. Risk is higher in areas with limited access to clean water.",
+      "prevention": [
+        "Drink only boiled or treated water",
+        "Wash hands with soap before eating and after using the toilet",
+        "Avoid raw or undercooked food",
+        "Seek medical care immediately if you develop watery diarrhea and vomiting"
+      ]
+    },
+    {
+      "disease": "Malaria",
+      "level": "moderate",
+      "updated_at": "2025-12-10",
+      "source": "Ministry of Health, Kenya",
+      "description": "Malaria remains common in many regions, especially at night and near stagnant water.",
+      "prevention": [
+        "Sleep under an insecticide-treated mosquito net",
+        "Use mosquito repellent on exposed skin",
+        "Drain standing water around your home",
+        "Seek testing if you develop fever, chills, or headaches"
+      ]
+    }
+  ],
+  "GLOBAL": [
+    {
+      "disease": "COVID-19",
+      "level": "moderate",
+      "updated_at": "2025-12-01",
+      "source": "World Health Organization",
+      "description": "Respiratory infections including COVID-19 continue to circulate globally.",
+      "prevention": [
+        "Stay up to date with recommended vaccination",
+        "Stay home when feeling unwell",
+        "Cover coughs and sneezes, and wash hands regularly",
+        "Avoid close contact with people who are visibly sick"
+      ]
+    },
+    {
+      "disease": "General respiratory infections",
+      "level": "low",
+      "updated_at": "2025-11-20",
+      "source": "Global public health agencies",
+      "description": "Colds and flu circulate year-round with seasonal peaks.",
+      "prevention": [
+        "Wash hands frequently with soap and water",
+        "Avoid touching your eyes, nose, and mouth",
+        "Keep rooms well ventilated",
+        "Seek medical advice if you have difficulty breathing or chest pain"
+      ]
+    }
+  ]
+}

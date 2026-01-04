@@ -1,29 +1,89 @@
-from flask import Flask, render_template, request, session, redirect, url_for, jsonify, flash
+from flask import Flask, render_template, request, session, redirect, url_for, jsonify, flash, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_wtf.csrf import CSRFProtect, generate_csrf
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 import csv
 import os
+import re
+import html
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import json
-import google.generativeai as genai
+import random
+import requests
+import africastalking
+import logging
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 load_dotenv()
 
-app.secret_key = os.getenv("SESSION_SECRET", "dev_secret_key")
+# Security: Require SESSION_SECRET in production
+SESSION_SECRET = os.getenv("SESSION_SECRET")
+if not SESSION_SECRET:
+    if os.getenv("FLASK_ENV") == "production":
+        raise ValueError("SESSION_SECRET environment variable is required in production")
+    else:
+        logger.warning("Using default SESSION_SECRET - NOT SAFE FOR PRODUCTION")
+        SESSION_SECRET = "dev_secret_key_change_in_production"
+
+app.secret_key = SESSION_SECRET
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///medilink.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# CSRF Protection
+csrf = CSRFProtect(app)
+
+@app.context_processor
+def inject_csrf_token():
+    return dict(csrf_token=generate_csrf)
+
+# Rate Limiting
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-genai.configure(api_key="AIzaSyB30a5xsNaMevk3_OenzjyM9jq4GF3YvUg")
+# Security: Google API key from environment variable
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+if not GOOGLE_API_KEY:
+    logger.error("GOOGLE_API_KEY not found in environment variables")
+    raise ValueError("GOOGLE_API_KEY environment variable is required")
 
 import google.generativeai as genai
+genai.configure(api_key=GOOGLE_API_KEY)
+
+# Initialize Africa's Talking
+AT_USERNAME = os.getenv('AT_USERNAME', 'sandbox')
+AT_API_KEY = os.getenv('AT_API_KEY', '')
+
+try:
+    africastalking.initialize(AT_USERNAME, AT_API_KEY)
+    # Initialize SMS service
+    sms = africastalking.SMS
+    print("Africa's Talking initialized successfully")
+except Exception as e:
+    print(f"Africa's Talking initialization failed: {e}")
+    sms = None
+
+# --- Configuration for external services ---
+GOOGLE_MAPS_OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -84,6 +144,98 @@ def load_user(user_id):
         return User.query.get(int(user_id))
     except Exception:
         return None
+
+
+# --- Security: Input Validation Utilities ---
+def sanitize_string(text: str, max_length: int = 1000) -> str:
+    """Sanitize user input by escaping HTML and limiting length."""
+    if not text:
+        return ""
+    # Escape HTML entities
+    sanitized = html.escape(str(text))
+    # Limit length
+    if len(sanitized) > max_length:
+        sanitized = sanitized[:max_length]
+    return sanitized.strip()
+
+
+def validate_email(email: str) -> bool:
+    """Validate email format."""
+    if not email:
+        return False
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(pattern, email.lower()))
+
+
+def validate_phone(phone: str) -> bool:
+    """Validate phone number format (basic validation)."""
+    if not phone:
+        return False
+    # Remove common separators
+    cleaned = re.sub(r'[\s\-\(\)]', '', phone)
+    # Check if it's digits and reasonable length
+    return cleaned.isdigit() and 7 <= len(cleaned) <= 15
+
+
+def validate_symptom_list(symptoms: list) -> bool:
+    """Validate symptom list - check for reasonable length and content."""
+    if not symptoms or len(symptoms) == 0:
+        return False
+    if len(symptoms) > 50:  # Prevent abuse
+        return False
+    # Check each symptom length
+    for symptom in symptoms:
+        if len(symptom) > 200:  # Prevent extremely long inputs
+            return False
+        # Check for suspicious patterns (basic check)
+        if len(re.findall(r'<|>|script|javascript', symptom, re.IGNORECASE)) > 0:
+            return False
+    return True
+
+
+def validate_name(name: str) -> bool:
+    """Validate name format."""
+    if not name or len(name.strip()) == 0:
+        return False
+    if len(name) > 120:
+        return False
+    # Allow letters, spaces, hyphens, apostrophes
+    pattern = r'^[a-zA-Z\s\-\']+$'
+    return bool(re.match(pattern, name))
+
+
+def validate_age(age: str) -> bool:
+    """Validate age input."""
+    if not age:
+        return False
+    try:
+        age_int = int(age)
+        return 0 <= age_int <= 150
+    except ValueError:
+        return False
+
+
+def validate_doctor_name(doctor_name: str, doctors_db: dict) -> bool:
+    """Validate that doctor name exists in the database."""
+    if not doctor_name:
+        return False
+    for specialty, doctors in doctors_db.items():
+        for doc in doctors:
+            if doc.get('name') == doctor_name:
+                return True
+    return False
+
+
+def sanitize_json_input(data: any) -> any:
+    """Recursively sanitize JSON data."""
+    if isinstance(data, str):
+        return sanitize_string(data, max_length=5000)
+    elif isinstance(data, dict):
+        return {k: sanitize_json_input(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [sanitize_json_input(item) for item in data]
+    else:
+        return data
 
 
 # ---- User preferences helpers ----
@@ -225,13 +377,31 @@ def generate_doctor_response(doctor_profile, patient_message, chat_context=None)
         return "Sorry, I couldn’t process your message right now."
 @app.route("/chat/<doctor_name>", methods=["GET", "POST"])
 @login_required
+@limiter.limit("30 per minute")
+@csrf.exempt
 def chat(doctor_name):
+    # Validate and sanitize doctor_name
+    doctor_name = sanitize_string(doctor_name, max_length=255)
+    if not doctor_name or len(doctor_name) < 2:
+        abort(400, "Invalid doctor name")
+    
     patient_message = ""
     if request.method == "POST":
         data = request.get_json() or {}
         patient_message = data.get("message", "").strip()
+        
+        # Validate message
         if not patient_message:
-            return {"reply": "Please type a message to send."}
+            return jsonify({"reply": "Please type a message to send."}), 400
+        
+        # Sanitize and validate message length
+        patient_message = sanitize_string(patient_message, max_length=2000)
+        if len(patient_message) < 1:
+            return jsonify({"reply": "Message is too short."}), 400
+        
+        # Prevent abuse: limit message frequency
+        if len(session.get('chat_messages', [])) > 100:
+            return jsonify({"reply": "Conversation too long. Please start a new chat."}), 400
 
     doctors_db = load_doctors_data()
     doctor_profile = None
@@ -465,45 +635,96 @@ def index():
 
 # --- Auth Routes ---
 @app.route('/signup', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def signup():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
         password2 = request.form.get('password2', '')
+        
+        # Validation
         if not email or not password:
             flash('Email and password are required.', 'danger')
             return render_template('signup.html')
+        
+        if not validate_email(email):
+            flash('Invalid email format.', 'danger')
+            return render_template('signup.html')
+        
+        if len(password) < 8:
+            flash('Password must be at least 8 characters long.', 'danger')
+            return render_template('signup.html')
+        
+        if len(password) > 128:
+            flash('Password is too long.', 'danger')
+            return render_template('signup.html')
+        
         if password != password2:
             flash('Passwords do not match.', 'danger')
             return render_template('signup.html')
+        
         if User.query.filter_by(email=email).first():
             flash('An account with this email already exists. Please log in.', 'warning')
             return redirect(url_for('login'))
-        user = User(email=email)
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
-        login_user(user)
-        flash('Account created. You are now logged in.', 'success')
-        next_url = request.args.get('next')
-        return redirect(next_url or url_for('index'))
+        
+        try:
+            user = User(email=email)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            login_user(user)
+            logger.info(f"New user registered: {email}")
+            flash('Account created. You are now logged in.', 'success')
+            next_url = request.args.get('next')
+            return redirect(next_url or url_for('index'))
+        except Exception as e:
+            logger.error(f"Signup error: {e}")
+            db.session.rollback()
+            flash('An error occurred. Please try again.', 'danger')
+            return render_template('signup.html')
+    
     return render_template('signup.html')
 
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
+@csrf.exempt
 def login():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
         remember = bool(request.form.get('remember'))
-        user = User.query.filter_by(email=email).first()
-        if not user or not user.check_password(password):
-            flash('Invalid email or password.', 'danger')
+        
+        # Validation
+        if not email or not password:
+            flash('Email and password are required.', 'danger')
             return render_template('login.html')
-        login_user(user, remember=remember)
-        flash('Welcome back!', 'success')
-        next_url = request.args.get('next')
-        return redirect(next_url or url_for('index'))
+        
+        if not validate_email(email):
+            flash('Invalid email format.', 'danger')
+            return render_template('login.html')
+        
+        if len(password) > 128:
+            flash('Invalid credentials.', 'danger')
+            return render_template('login.html')
+        
+        try:
+            user = User.query.filter_by(email=email).first()
+            if not user or not user.check_password(password):
+                logger.warning(f"Failed login attempt for: {email}")
+                flash('Invalid email or password.', 'danger')
+                return render_template('login.html')
+            
+            login_user(user, remember=remember)
+            logger.info(f"User logged in: {email}")
+            flash('Welcome back!', 'success')
+            next_url = request.args.get('next')
+            return redirect(next_url or url_for('index'))
+        except Exception as e:
+            logger.error(f"Login error: {e}")
+            flash('An error occurred. Please try again.', 'danger')
+            return render_template('login.html')
+    
     return render_template('login.html')
 
 
@@ -517,18 +738,26 @@ def logout():
 
 @app.route('/symptoms', methods=['GET', 'POST'])
 @login_required
+@limiter.limit("10 per minute")
+@csrf.exempt
 def symptoms():
     if request.method == 'POST':
         selected_symptoms = request.form.getlist('symptoms[]')
         custom_symptoms = request.form.get('custom_symptoms', '').strip()
+        
+        # Sanitize selected symptoms
+        selected_symptoms = [sanitize_string(s, max_length=200) for s in selected_symptoms if s]
+        
         all_symptoms = selected_symptoms.copy()
         if custom_symptoms:
-            custom_list = [s.strip() for s in custom_symptoms.split(',') if s.strip()]
+            custom_symptoms = sanitize_string(custom_symptoms, max_length=500)
+            custom_list = [sanitize_string(s.strip(), max_length=200) for s in custom_symptoms.split(',') if s.strip()]
             all_symptoms.extend(custom_list)
 
-        if not all_symptoms:
+        # Validate symptom list
+        if not validate_symptom_list(all_symptoms):
             return render_template('symptoms.html', symptoms=get_all_symptoms(),
-                                   error="Please select or enter at least one symptom.")
+                                   error="Please select or enter at least one valid symptom (max 50 symptoms).")
 
         session['user_symptoms'] = all_symptoms
         session['chat_history'].append({'type': 'user', 'message': f"I'm experiencing: {', '.join(all_symptoms)}"})
@@ -582,17 +811,35 @@ def specialist():
         disease_meds[r['disease']] = ", ".join(meds_list)
 
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
+        name = sanitize_string(request.form.get('name', '').strip(), max_length=120)
         age = request.form.get('age', '').strip()
-        location = request.form.get('location', '').strip()
-        selected_disease = request.form.get('selected_disease', '').strip()
-        selected_doctor = request.form.get('selected_doctor', '').strip()
+        location = sanitize_string(request.form.get('location', '').strip(), max_length=120)
+        selected_disease = sanitize_string(request.form.get('selected_disease', '').strip(), max_length=255)
+        selected_doctor = sanitize_string(request.form.get('selected_doctor', '').strip(), max_length=255)
 
+        # Validation
         if not all([name, age, location, selected_disease, selected_doctor]):
             return render_template('specialist.html', results=results_top2, doctors=doctors,
                                    error="Please fill in all fields and select a doctor.")
+        
+        if not validate_name(name):
+            return render_template('specialist.html', results=results_top2, doctors=doctors,
+                                   error="Invalid name format.")
+        
+        if not validate_age(age):
+            return render_template('specialist.html', results=results_top2, doctors=doctors,
+                                   error="Invalid age. Please enter a number between 0 and 150.")
+        
+        # Validate doctor exists
+        if not validate_doctor_name(selected_doctor, doctors_db):
+            return render_template('specialist.html', results=results_top2, doctors=doctors,
+                                   error="Selected doctor not found. Please choose a valid doctor.")
 
         selected_info = next((r for r in results if r['disease'] == selected_disease), None)
+        if not selected_info:
+            return render_template('specialist.html', results=results_top2, doctors=doctors,
+                                   error="Selected disease not found.")
+        
         session['user_info'] = {
             'name': name,
             'age': age,
@@ -702,13 +949,24 @@ def delete_chat(thread_id: int):
 @login_required
 def profile():
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
+        name = sanitize_string(request.form.get('name', '').strip(), max_length=120)
         age = request.form.get('age', '').strip()
-        location = request.form.get('location', '').strip()
+        location = sanitize_string(request.form.get('location', '').strip(), max_length=120)
         theme = request.form.get('theme')  # 'light' or 'dark'
-        current_user.name = name
-        current_user.age = age
-        current_user.location = location
+        
+        # Validation
+        if name and not validate_name(name):
+            flash('Invalid name format.', 'danger')
+            return redirect(url_for('profile'))
+        
+        if age and not validate_age(age):
+            flash('Invalid age. Please enter a number between 0 and 150.', 'danger')
+            return redirect(url_for('profile'))
+        
+        current_user.name = name if name else current_user.name
+        current_user.age = age if age else current_user.age
+        current_user.location = location if location else current_user.location
+        
         # Save theme in preferences
         prefs = get_user_prefs(current_user)
         if theme in ('light', 'dark'):
@@ -716,9 +974,11 @@ def profile():
         set_user_prefs(current_user, prefs)
         try:
             db.session.commit()
+            logger.info(f"Profile updated for user: {current_user.email}")
             flash('Profile updated.', 'success')
         except Exception as e:
-            print(f"[Profile Save Error] {e}")
+            logger.error(f"[Profile Save Error] {e}")
+            db.session.rollback()
             flash('Could not save profile.', 'danger')
         return redirect(url_for('profile'))
 
@@ -775,22 +1035,51 @@ def book():
                 break
 
     if request.method == 'POST':
+        # Sanitize inputs
+        doctor_name = sanitize_string(doctor_name or '', max_length=255)
+        doctor_specialty = sanitize_string(doctor_specialty or '', max_length=120)
         mode = (request.form.get('mode') or '').lower()
         date_str = request.form.get('date')  # yyyy-mm-dd
-        slot_key = request.form.get('slot')  # e.g., '10-12'
-        reason = request.form.get('reason', '').strip()
+        slot_key = sanitize_string(request.form.get('slot', ''), max_length=20)  # e.g., '10-12'
+        reason = sanitize_string(request.form.get('reason', '').strip(), max_length=1000)
         contact_method = request.form.get('contact_method') if mode == 'virtual' else None
-        contact_value = request.form.get('contact_value') if mode == 'virtual' else None
+        contact_value = sanitize_string(request.form.get('contact_value', ''), max_length=255) if mode == 'virtual' else None
 
+        # Validation
         if not all([doctor_name, doctor_specialty, mode, date_str, slot_key]):
             flash('Please complete all required fields.', 'danger')
             return render_template('book.html', doctor_name=doctor_name, doctor_specialty=doctor_specialty,
                                    hospital=hospital, phone=phone)
+        
+        if mode not in ('virtual', 'physical'):
+            flash('Invalid appointment mode.', 'danger')
+            return render_template('book.html', doctor_name=doctor_name, doctor_specialty=doctor_specialty,
+                                   hospital=hospital, phone=phone)
+        
+        if mode == 'virtual' and contact_method not in ('phone', 'email'):
+            flash('Invalid contact method for virtual appointment.', 'danger')
+            return render_template('book.html', doctor_name=doctor_name, doctor_specialty=doctor_specialty,
+                                   hospital=hospital, phone=phone)
+        
+        if mode == 'virtual' and contact_value:
+            if contact_method == 'email' and not validate_email(contact_value):
+                flash('Invalid email address.', 'danger')
+                return render_template('book.html', doctor_name=doctor_name, doctor_specialty=doctor_specialty,
+                                       hospital=hospital, phone=phone)
+            elif contact_method == 'phone' and not validate_phone(contact_value):
+                flash('Invalid phone number.', 'danger')
+                return render_template('book.html', doctor_name=doctor_name, doctor_specialty=doctor_specialty,
+                                       hospital=hospital, phone=phone)
 
         try:
             date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+            # Prevent booking in the past
+            if date_obj.date() < datetime.now().date():
+                flash('Cannot book appointments in the past.', 'danger')
+                return render_template('book.html', doctor_name=doctor_name, doctor_specialty=doctor_specialty,
+                                       hospital=hospital, phone=phone)
         except ValueError:
-            flash('Invalid date.', 'danger')
+            flash('Invalid date format.', 'danger')
             return render_template('book.html', doctor_name=doctor_name, doctor_specialty=doctor_specialty,
                                    hospital=hospital, phone=phone)
 
@@ -862,7 +1151,32 @@ def booking_detail(booking_id: int):
     if not appt:
         flash('Appointment not found.', 'warning')
         return redirect(url_for('bookings'))
-    return render_template('booking_detail.html', appt=appt)
+
+    # Generate a simple random payment reference for now (not persisted)
+    payment_ref = f"ML{random.randint(100000000, 999999999)}"
+
+    # Try to fetch the most recent summary linked to this user/doctor
+    latest_summary = None
+    summary_meds = []
+    try:
+        latest_summary = (
+            SummaryModel.query
+            .filter_by(user_id=current_user.id, selected_doctor=appt.doctor_name)
+            .order_by(SummaryModel.created_at.desc())
+            .first()
+        )
+        if latest_summary and latest_summary.meds_json:
+            summary_meds = json.loads(latest_summary.meds_json or "[]")
+    except Exception as e:
+        print(f"[Booking Detail Summary Load Error] {e}")
+
+    return render_template(
+        'booking_detail.html',
+        appt=appt,
+        payment_ref=payment_ref,
+        latest_summary=latest_summary,
+        summary_meds=summary_meds,
+    )
 
 
 @app.route('/bookings')
@@ -922,6 +1236,401 @@ def history():
 def restart():
     session.clear()
     return redirect(url_for('index'))
+
+
+# --- USSD Routes ---
+@app.route('/ussd', methods=['POST', 'GET'])
+@csrf.exempt  # USSD doesn't support CSRF tokens
+@limiter.limit("20 per minute")
+def ussd_callback():
+    """Handle USSD requests from Africa's Talking"""
+    if request.method == 'GET':
+        return "USSD endpoint is active", 200
+    
+    # Get and validate USSD session data
+    session_id = sanitize_string(request.form.get('sessionId', ''), max_length=100)
+    phone_number = request.form.get('phoneNumber', '')
+    text = sanitize_string(request.form.get('text', ''), max_length=500)
+    
+    # Validate phone number
+    if phone_number and not validate_phone(phone_number):
+        return "END Invalid phone number format.", 200
+    
+    # Parse user input
+    if text:
+        user_input = text.split('*')[-1].strip()
+    else:
+        user_input = ''
+    
+    # Load disease data for symptom analysis
+    try:
+        disease_data = []
+        with open('data/diseases.csv', 'r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                disease_data.append(row)
+    except Exception as e:
+        print(f"[USSD Error] Could not load disease data: {e}")
+        disease_data = []
+    
+    # USSD Menu Logic
+    response = ""
+    
+    if text == '':
+        # Main menu - First interaction
+        response = "CON Welcome to MediLinkBot Health Check\n"
+        response += "1. Check Symptoms\n"
+        response += "2. Talk to Doctor\n"
+        response += "3. Emergency Contacts\n"
+        response += "4. Exit"
+    
+    elif user_input == '1':
+        # Symptom checker menu
+        if len(text.split('*')) == 1:
+            response = "CON Select symptom category:\n"
+            response += "1. Fever & Headache\n"
+            response += "2. Cough & Cold\n"
+            response += "3. Stomach Issues\n"
+            response += "4. Skin Problems\n"
+            response += "5. Other Symptoms"
+        else:
+            # Get symptoms based on category
+            category = text.split('*')[1]
+            symptoms = get_ussd_symptoms_by_category(category, disease_data)
+            
+            if len(text.split('*')) == 2:
+                response = "CON Select your symptoms (enter numbers separated by commas):\n"
+                for i, symptom in enumerate(symptoms[:5], 1):  # Limit to 5 symptoms for USSD
+                    response += f"{i}. {symptom}\n"
+                response += "6. Enter custom symptom"
+            else:
+                # Analyze symptoms
+                selected_indices = text.split('*')[2].split(',')
+                selected_symptoms = []
+                
+                for idx in selected_indices:
+                    try:
+                        if int(idx) <= len(symptoms):
+                            selected_symptoms.append(symptoms[int(idx) - 1])
+                    except (ValueError, IndexError):
+                        continue
+                
+                if selected_symptoms:
+                    analysis = analyze_ussd_symptoms(selected_symptoms, disease_data)
+                    response = f"END Possible conditions:\n"
+                    for condition in analysis[:3]:  # Top 3 results
+                        response += f"• {condition['disease']} ({condition['confidence']}%)\n"
+                    response += f"\nRecommended: {analysis[0]['specialist']}\n"
+                    response += "Consult a healthcare provider for accurate diagnosis."
+                else:
+                    response = "END No valid symptoms selected. Please try again."
+    
+    elif user_input == '2':
+        # Talk to doctor
+        response = "END To consult with a doctor:\n"
+        response += "Visit: medilinkbot.com\n"
+        response += "Call: +254700123456\n"
+        response += "Available 24/7 for emergencies"
+    
+    elif user_input == '3':
+        # Emergency contacts
+        response = "END Emergency Contacts:\n"
+        response += "• Emergency: 999/112\n"
+        response += "• COVID-19: 719\n"
+        response += "• Mental Health: 1190\n"
+        response += "Nearest Hospital: Call 119 for directions"
+    
+    elif user_input == '4':
+        # Exit
+        response = "END Thank you for using MediLinkBot. Stay healthy!"
+    
+    else:
+        # Invalid input
+        response = "CON Invalid choice. Please try again:\n"
+        response += "1. Check Symptoms\n"
+        response += "2. Talk to Doctor\n"
+        response += "3. Emergency Contacts\n"
+        response += "4. Exit"
+    
+    return response, 200, {'Content-Type': 'text/plain'}
+
+
+# --- SMS Routes ---
+@app.route('/sms', methods=['POST'])
+@csrf.exempt  # SMS doesn't support CSRF tokens
+@limiter.limit("30 per minute")
+def sms_callback():
+    """Handle incoming SMS messages from Africa's Talking"""
+    # Get and validate SMS data
+    from_number = request.form.get('from', '')
+    to_number = request.form.get('to', '')
+    text = sanitize_string(request.form.get('text', '').strip().lower(), max_length=500)
+    message_id = sanitize_string(request.form.get('id', ''), max_length=100)
+    
+    # Validate phone number
+    if not validate_phone(from_number):
+        logger.warning(f"Invalid phone number in SMS: {from_number}")
+        return "OK", 200  # Return OK to prevent retries
+    
+    logger.info(f"[SMS] From: {from_number}, Message: {text[:50]}...")
+    
+    # Process SMS commands
+    response_text = process_sms_command(text, from_number)
+    
+    # Send response via SMS
+    if sms and response_text:
+        try:
+            result = sms.send(response_text, [from_number])
+            print(f"[SMS] Response sent: {result}")
+        except Exception as e:
+            print(f"[SMS Error] Failed to send: {e}")
+    
+    return "OK", 200
+
+def process_sms_command(message, phone_number):
+    """Process SMS commands and return response"""
+    
+    # Load disease data
+    try:
+        disease_data = []
+        with open('data/diseases.csv', 'r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                disease_data.append(row)
+    except Exception as e:
+        print(f"[SMS Error] Could not load disease data: {e}")
+        return "Sorry, our symptom checker is temporarily unavailable."
+    
+    # Command processing
+    if message in ['hi', 'hello', 'start']:
+        return """MediLinkBot Health Service
+Commands:
+MENU - Show main menu
+SYMPTOMS <symptoms> - Check symptoms
+EMERGENCY - Emergency contacts
+DOCTOR - Find doctor
+HELP - More info"""
+    
+    elif message == 'menu':
+        return """MediLinkBot Menu:
+1. SYMPTOMS <your symptoms>
+2. EMERGENCY
+3. DOCTOR
+4. HELP
+
+Example: SYMPTOMS fever headache"""
+    
+    elif message.startswith('symptom'):
+        # Extract symptoms after "symptom" or "symptoms"
+        symptoms_text = message.replace('symptom', '').replace('symptoms', '').strip()
+        if not symptoms_text:
+            return "Please provide symptoms. Example: SYMPTOMS fever headache"
+        
+        # Parse symptoms (split by common separators)
+        symptoms = []
+        for sep in [',', ' and ', ' & ', ' ']:
+            if sep in symptoms_text:
+                symptoms = [s.strip() for s in symptoms_text.split(sep) if s.strip()]
+                break
+        else:
+            symptoms = [symptoms_text]
+        
+        # Analyze symptoms
+        analysis = analyze_ussd_symptoms(symptoms, disease_data)
+        
+        if analysis:
+            response = f"MediLinkBot Analysis:\n\n"
+            for i, condition in enumerate(analysis[:3], 1):
+                response += f"{i}. {condition['disease']} ({condition['confidence']}% match)\n"
+            
+            response += f"\nRecommended: {condition['specialist']}\n"
+            response += f"\nConsult a healthcare provider for accurate diagnosis."
+            return response
+        else:
+            return "No matching conditions found. Please describe symptoms differently."
+    
+    elif message == 'emergency':
+        return """EMERGENCY CONTACTS:
+• Emergency: 999/112
+• COVID-19: 719
+• Mental Health: 1190
+• Nearest Hospital: Call 119
+
+For immediate emergencies, call 999 now."""
+    
+    elif message == 'doctor':
+        return """FIND A DOCTOR:
+Visit: medilinkbot.com
+Call: +254700123456
+Available 24/7 for emergencies
+
+Or reply with: SYMPTOMS <your symptoms> to get specialist recommendation."""
+    
+    elif message == 'help':
+        return """MediLinkBot Help:
+• SYMPTOMS fever headache - Check symptoms
+• EMERGENCY - Get emergency numbers
+• DOCTOR - Find healthcare provider
+• MENU - Show all options
+
+This is a free service. For medical emergencies, call 999."""
+    
+    else:
+        return """Unknown command. Reply MENU for options or HELP for more info.
+Example: SYMPTOMS fever headache"""
+
+
+def get_ussd_symptoms_by_category(category, disease_data):
+    """Extract symptoms by category for USSD interface"""
+    category_symptoms = {
+        '1': ['Fever', 'Headache', 'Body Pain', 'Chills', 'Fatigue'],
+        '2': ['Cough', 'Cold', 'Sore Throat', 'Runny Nose', 'Chest Pain'],
+        '3': ['Stomach Pain', 'Nausea', 'Vomiting', 'Diarrhea', 'Loss of Appetite'],
+        '4': ['Skin Rash', 'Itching', 'Swelling', 'Redness', 'Dry Skin'],
+        '5': ['Dizziness', 'Difficulty Breathing', 'Joint Pain', 'Anxiety', 'Depression']
+    }
+    return category_symptoms.get(category, ['Fever', 'Headache', 'Cough', 'Fatigue', 'Pain'])
+
+
+def analyze_ussd_symptoms(symptoms, disease_data):
+    """Simple symptom analysis for USSD interface"""
+    results = []
+    
+    for disease in disease_data:
+        disease_symptoms = [s.strip() for s in disease.get('symptoms', '').split(';')]
+        match_count = sum(1 for symptom in symptoms if symptom in disease_symptoms)
+        
+        if match_count > 0:
+            confidence = min(95, (match_count / len(symptoms)) * 100)
+            results.append({
+                'disease': disease.get('disease', 'Unknown'),
+                'confidence': round(confidence),
+                'specialist': disease.get('specialist', 'General Practitioner'),
+                'medications': disease.get('medications', 'Consult doctor')
+            })
+    
+    # Sort by confidence
+    results.sort(key=lambda x: x['confidence'], reverse=True)
+    return results[:5]  # Return top 5
+
+
+# --- Nearby Health Facilities (OpenStreetMap / Leaflet) ---
+@app.route('/facilities')
+def facilities_page():
+    """Render the nearby health facilities page (map + list)."""
+    return render_template('facilities.html')
+
+
+@app.route('/api/facilities')
+def api_facilities():
+    """Return nearby health facilities using OpenStreetMap / Overpass API."""
+    try:
+        lat = float(request.args.get('lat', ''))
+        lng = float(request.args.get('lng', ''))
+    except ValueError:
+        return jsonify({'error': 'Invalid or missing coordinates'}), 400
+
+    radius = int(request.args.get('radius', 3000))  # in meters
+
+    overpass_url = "https://overpass-api.de/api/interpreter"
+    overpass_query = f"""
+    [out:json];
+    (
+      node["amenity"~"hospital|clinic|doctors|pharmacy"](around:{radius},{lat},{lng});
+      way["amenity"~"hospital|clinic|doctors|pharmacy"](around:{radius},{lat},{lng});
+      relation["amenity"~"hospital|clinic|doctors|pharmacy"](around:{radius},{lat},{lng});
+    );
+    out center 40;
+    """
+
+    try:
+        resp = requests.post(overpass_url, data={'data': overpass_query}, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as e:
+        print(f"[Facilities Overpass Error] {e}")
+        return jsonify({'error': 'Could not fetch facilities at the moment.'}), 500
+
+    facilities = []
+    for element in data.get('elements', []):
+        tags = element.get('tags', {})
+        name = tags.get('name')
+        if not name:
+            continue
+
+        # Determine coordinates
+        if 'lat' in element and 'lon' in element:
+            flat = element['lat']
+            flng = element['lon']
+        elif 'center' in element:
+            flat = element['center'].get('lat')
+            flng = element['center'].get('lon')
+        else:
+            continue
+
+        amenity = tags.get('amenity', '')
+        address_parts = [
+            tags.get('addr:street'),
+            tags.get('addr:housenumber'),
+            tags.get('addr:suburb'),
+            tags.get('addr:city'),
+        ]
+        address = ", ".join([p for p in address_parts if p]) or tags.get('addr:full') or ''
+
+        facilities.append({
+            'name': name,
+            'lat': flat,
+            'lng': flng,
+            'amenity': amenity,
+            'address': address,
+            'osm_id': element.get('id')
+        })
+
+    facilities = facilities[:40]
+    return jsonify({'facilities': facilities})
+
+
+# --- Local Disease Alerts ---
+@app.route('/alerts')
+def alerts_page():
+    """Show local disease alerts & prevention tips."""
+    region_code = request.args.get('region') or 'GLOBAL'
+    region_code = region_code.upper()
+
+    user_location = None
+    if current_user.is_authenticated:
+        loc = (current_user.location or '').lower()
+        user_location = current_user.location or None
+        if any(x in loc for x in ['kenya', 'nairobi', 'ke ']):
+            region_code = 'KE'
+
+    alerts = []
+    global_alerts = []
+    try:
+        with open(os.path.join('data', 'alerts.json'), 'r', encoding='utf-8') as f:
+            all_alerts = json.load(f)
+        alerts = all_alerts.get(region_code, [])
+        global_alerts = all_alerts.get('GLOBAL', [])
+    except Exception as e:
+        print(f"[Alerts Load Error] {e}")
+
+    region_name_map = {
+        'KE': 'Kenya',
+        'GLOBAL': 'Global'
+    }
+    region_name = region_name_map.get(region_code, region_code)
+
+    # Display name prioritises the user's saved location if available
+    display_region = user_location or region_name
+
+    return render_template(
+        'alerts.html',
+        region_code=region_code,
+        region_name=region_name,
+        display_region=display_region,
+        alerts=alerts,
+        global_alerts=global_alerts
+    )
 
 
 # --- App Launch ---

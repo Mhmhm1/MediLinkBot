@@ -5,14 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login - MediLink</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        linear-gradient(120deg, #0b1635, #0f2a6b, #143b8e, #0c5cb6),
+        url("{{ url_for('static', filename='media/background.webp') }}") center/cover no-repeat fixed;
+      background-blend-mode: overlay;
+      background-size: 300% 300%, cover;
+      animation: bgShift 18s ease infinite;
+      color: #eaf1ff;
+    }
+    @keyframes bgShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+    .auth-card { backdrop-filter: blur(14px); background: rgba(10, 16, 40, 0.7); border-radius: 18px; border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  </style>
 </head>
-<body class="bg-light">
+<body>
   <div class="container py-5">
     <div class="row justify-content-center">
       <div class="col-md-5">
-        <div class="card shadow-sm">
-          <div class="card-body p-4">
-            <h3 class="mb-3 text-center">MediLink Login</h3>
+        <div class="auth-card shadow-sm">
+          <div class="card-body p-4 text-light">
+            <div class="text-center mb-3">
+              <img src="{{ url_for('static', filename='media/logo.jpg') }}" alt="MediLink logo" height="40" class="mb-2 rounded">
+              <h3 class="mb-0">MediLink Login</h3>
+            </div>
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
               {% for category, message in messages %}
@@ -21,6 +41,7 @@
             {% endif %}
             {% endwith %}
             <form method="POST" action="{{ url_for('login', next=request.args.get('next')) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
                 <input type="email" class="form-control" id="email" name="email" placeholder="you@example.com" required>
