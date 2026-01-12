@@ -11,7 +11,7 @@ import re
 import html
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-import json
+#import jsonvenv
 import random
 import requests
 import africastalking
@@ -26,6 +26,14 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 load_dotenv()
+
+# Helper to resolve data file paths relative to the Flask app root
+def data_file_path(*parts) -> str:
+    try:
+        base = app.root_path
+    except Exception:
+        base = os.getcwd()
+    return os.path.join(base, 'data', *parts)
 
 # Security: Require SESSION_SECRET in production
 SESSION_SECRET = os.getenv("SESSION_SECRET")
@@ -528,46 +536,64 @@ def chat(doctor_name):
 
 def load_doctors_data():
     doctors = {}
-    with open('data/doctors.csv', newline='', encoding='utf-8') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            specialty = row['specialty']
-            if specialty not in doctors:
-                doctors[specialty] = []
-            doctors[specialty].append({
-                'name': row['name'],
-                'qualifications': row['qualifications'],
-                'experience': row['experience'],
-                'rating': row['rating'],
-                'hospital': row.get('hospital', 'Unknown'),
-                'phone': row.get('phone', '').strip() or 'N/A'
-            })
+    path = data_file_path('doctors.csv')
+    try:
+        with open(path, newline='', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                specialty = row['specialty']
+                if specialty not in doctors:
+                    doctors[specialty] = []
+                doctors[specialty].append({
+                    'name': row['name'],
+                    'qualifications': row['qualifications'],
+                    'experience': row['experience'],
+                    'rating': row['rating'],
+                    'hospital': row.get('hospital', 'Unknown'),
+                    'phone': row.get('phone', '').strip() or 'N/A'
+                })
+    except FileNotFoundError:
+        logger.error(f"Doctors data file not found: {path}")
+    except Exception as e:
+        logger.error(f"Error loading doctors data: {e}")
     return doctors
 
 
 def load_disease_data():
     diseases = []
-    with open('data/diseases.csv', 'r') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            diseases.append({
-                'name': row['disease'],
-                'symptoms': row['symptoms'].split(';'),
-                'medications': row['medications'].split(';'),
-                'specialist': row['specialist']
-            })
+    path = data_file_path('diseases.csv')
+    try:
+        with open(path, 'r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                diseases.append({
+                    'name': row['disease'],
+                    'symptoms': row['symptoms'].split(';'),
+                    'medications': row['medications'].split(';'),
+                    'specialist': row['specialist']
+                })
+    except FileNotFoundError:
+        logger.error(f"Diseases data file not found: {path}")
+    except Exception as e:
+        logger.error(f"Error loading diseases data: {e}")
     return diseases
 
 
 def load_medication_data():
     medications = {}
-    with open('data/medications.csv', 'r') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            medications[row['medication']] = {
-                'dosage': row['dosage'],
-                'side_effects': row['side_effects'].split(';') if row['side_effects'] else []
-            }
+    path = data_file_path('medications.csv')
+    try:
+        with open(path, 'r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                medications[row['medication']] = {
+                    'dosage': row['dosage'],
+                    'side_effects': row['side_effects'].split(';') if row['side_effects'] else []
+                }
+    except FileNotFoundError:
+        logger.error(f"Medications data file not found: {path}")
+    except Exception as e:
+        logger.error(f"Error loading medications data: {e}")
     return medications
 
 
@@ -1265,7 +1291,7 @@ def ussd_callback():
     # Load disease data for symptom analysis
     try:
         disease_data = []
-        with open('data/diseases.csv', 'r', encoding='utf-8') as file:
+        with open(data_file_path('diseases.csv'), 'r', encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for row in reader:
                 disease_data.append(row)
@@ -1393,7 +1419,7 @@ def process_sms_command(message, phone_number):
     # Load disease data
     try:
         disease_data = []
-        with open('data/diseases.csv', 'r', encoding='utf-8') as file:
+        with open(data_file_path('diseases.csv'), 'r', encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for row in reader:
                 disease_data.append(row)
@@ -1607,7 +1633,7 @@ def alerts_page():
     alerts = []
     global_alerts = []
     try:
-        with open(os.path.join('data', 'alerts.json'), 'r', encoding='utf-8') as f:
+        with open(data_file_path('alerts.json'), 'r', encoding='utf-8') as f:
             all_alerts = json.load(f)
         alerts = all_alerts.get(region_code, [])
         global_alerts = all_alerts.get('GLOBAL', [])
